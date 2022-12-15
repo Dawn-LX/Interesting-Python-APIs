@@ -11,6 +11,65 @@ import torch
 import logging
 from torchvision.ops import roi_pool as roi_pool2d
 
+def bbox_IoU(box1, box2):
+    ## https://github.com/kuangliu/torchcv/blob/master/torchcv/utils/box.py
+    # with slight modifications (i.e., add TO_REMOVE = 1 to consider one extra pixel)
+
+    '''Compute the intersection over union of two set of boxes.
+    The box order must be (xmin, ymin, xmax, ymax).
+    Args:
+      box1: (tensor) bounding boxes, sized [N,4].
+      box2: (tensor) bounding boxes, sized [M,4].
+    Return:
+      (tensor) iou, sized [N,M].
+    Reference:
+      https://github.com/chainer/chainercv/blob/master/chainercv/utils/bbox/bbox_iou.py
+    '''
+    box1 = box1.float()
+    box2 = box2.float()
+    N = box1.size(0)
+    M = box2.size(0)
+    TO_REMOVE = 1
+
+    lt = torch.max(box1[:,None,:2], box2[:,:2])  # [N,M,2]
+    rb = torch.min(box1[:,None,2:], box2[:,2:])  # [N,M,2]
+
+    wh = (rb - lt + TO_REMOVE).clamp(min=0)      # [N,M,2]
+    inter = wh[:,:,0] * wh[:,:,1]  # [N,M]
+
+    area1 = (box1[:,2]-box1[:,0]+TO_REMOVE) * (box1[:,3]-box1[:,1]+TO_REMOVE)  # [N,]
+    area2 = (box2[:,2]-box2[:,0]+TO_REMOVE) * (box2[:,3]-box2[:,1]+TO_REMOVE)  # [M,]
+    iou = inter / (area1[:,None] + area2 - inter)
+    return iou
+
+
+def bbox_GIoU(box1,box2):
+    box1 = box1.float()
+    box2 = box2.float()
+    N = box1.size(0)
+    M = box2.size(0)
+    TO_REMOVE = 1
+
+    lt = torch.max(box1[:,None,:2], box2[:,:2])  # [N,M,2]
+    rb = torch.min(box1[:,None,2:], box2[:,2:])  # [N,M,2]
+
+    wh = (rb - lt + TO_REMOVE).clamp(min=0)      # [N,M,2]
+    inter = wh[:,:,0] * wh[:,:,1]  # [N,M]
+
+    area1 = (box1[:,2]-box1[:,0]+TO_REMOVE) * (box1[:,3]-box1[:,1]+TO_REMOVE)  # [N,]
+    area2 = (box2[:,2]-box2[:,0]+TO_REMOVE) * (box2[:,3]-box2[:,1]+TO_REMOVE)  # [M,]
+    
+    union = area1[:,None] + area2 - inter  # (N,M)
+    iou = inter / union
+
+    u_lt = torch.min(box1[:,None,:2], box2[:,:2])  # [N,M,2]
+    u_rb = torch.max(box1[:,None,2:], box2[:,2:])  # [N,M,2]
+    u_box = torch.cat([u_lt,u_rb],dim=-1)  # (N,M,4)
+    u_box_area = (u_box[:,:,2]-u_box[:,:,0]+TO_REMOVE) * (u_box[:,:,3]-u_box[:,:,1]+TO_REMOVE)  # [N,M]
+
+    giou = iou - (u_box_area - union)/u_box_area
+
+    return giou
 
 def parse_config_py(filename):
     """
