@@ -1,0 +1,172 @@
+
+
+import random
+import torch
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+from collections import defaultdict
+from utils.utils_func import repr_2d_tensor_with_ids
+
+
+
+
+def multi_round_bipartite_matching_demo():
+    '''
+    perform multiple rounds matching for n_rows < n_cols
+    if n_rows >= n_cols, just one round and return
+    '''
+    np.set_printoptions(linewidth=160,precision=4)
+    np.random.seed(111)
+    n_vis = 5
+    n_act = 14
+    ori_cost_mat = np.random.rand(n_vis,n_act)
+    cost_mat = ori_cost_mat.copy()
+
+    abs_remaining_col_ids = np.arange(cost_mat.shape[1])
+    matched_abs_row_ids = []
+    matched_abs_col_ids = []
+
+    i=1
+    print("\n","**"*30,f"{i}-th round","**"*30)
+    crt_n_cols = cost_mat.shape[1]  # current n_cols
+    # print(cost_mat,f"cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+    print(repr_2d_tensor_with_ids(torch.from_numpy(cost_mat))+f"cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+
+    row_ids, col_ids = linear_sum_assignment(cost_mat)  # (n_vis,crt_n_cols)
+    abs_col_ids = abs_remaining_col_ids[col_ids]
+    print("matched columns: relative_id: {}; abs_id: {}".format(col_ids,abs_col_ids))
+    matched_abs_row_ids.extend(row_ids.tolist())
+    matched_abs_col_ids.extend(abs_col_ids.tolist())
+    
+    rel_remaining_col_ids = np.setdiff1d(np.arange(crt_n_cols), col_ids) # `np.arange(8)`  equal to `np.array(range(8))`
+    abs_remaining_col_ids = abs_remaining_col_ids[rel_remaining_col_ids]
+    print("remaining columns: relative_id: {}; abs_id: {}".format(rel_remaining_col_ids,abs_remaining_col_ids))
+    cost_mat = cost_mat[:,rel_remaining_col_ids]
+    
+
+    i=2
+    print("\n","**"*30,f"{i}-th round","**"*30)
+    crt_n_cols = cost_mat.shape[1]  # current n_cols
+    print(cost_mat,f"cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+
+    
+    row_ids, col_ids = linear_sum_assignment(cost_mat)
+    abs_col_ids = abs_remaining_col_ids[col_ids]
+    print("matched columns: relative_id: {}; abs_id: {}".format(col_ids,abs_col_ids))
+    matched_abs_row_ids.extend(row_ids.tolist())
+    matched_abs_col_ids.extend(abs_col_ids.tolist())
+
+    rel_remaining_col_ids = np.setdiff1d(np.arange(crt_n_cols), col_ids)
+    abs_remaining_col_ids = abs_remaining_col_ids[rel_remaining_col_ids]
+    print("remaining columns: relative_id: {}; abs_id: {}".format(rel_remaining_col_ids,abs_remaining_col_ids))
+    cost_mat = cost_mat[:,rel_remaining_col_ids]
+
+    i=3
+    print("\n","**"*30,f"{i}-th round","**"*30)
+    crt_n_cols = cost_mat.shape[1]  # current n_cols
+    print(cost_mat,f"cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+
+    
+    row_ids, col_ids = linear_sum_assignment(cost_mat)
+    abs_col_ids = abs_remaining_col_ids[col_ids]
+    print("matched columns: relative_id: {}; abs_id: {}".format(col_ids,abs_col_ids))
+    matched_abs_row_ids.extend(row_ids.tolist())
+    matched_abs_col_ids.extend(abs_col_ids.tolist())
+
+    rel_remaining_col_ids = np.setdiff1d(np.arange(crt_n_cols), col_ids)
+    abs_remaining_col_ids = abs_remaining_col_ids[rel_remaining_col_ids]
+    print("remaining columns: relative_id: {}; abs_id: {}".format(rel_remaining_col_ids,abs_remaining_col_ids))
+    cost_mat = cost_mat[:,rel_remaining_col_ids]
+
+    # return
+    
+    cost_mat = ori_cost_mat.copy()
+    abs_remaining_col_ids = np.arange(cost_mat.shape[1])
+    matched_abs_row_ids = []
+    matched_abs_col_ids = []
+    i=1
+    while True:
+        print("\n","##"*30,f"{i}-th round","##"*30)
+        crt_n_cols = cost_mat.shape[1]  # current n_cols
+        # print(cost_mat,f"cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+        print(repr_2d_tensor_with_ids(torch.from_numpy(cost_mat))+f" cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+
+        
+        row_ids, col_ids = linear_sum_assignment(cost_mat)
+        abs_col_ids = abs_remaining_col_ids[col_ids]
+        print("matched columns: relative_id: {}; abs_id: {}".format(col_ids,abs_col_ids))
+        matched_abs_row_ids.extend(row_ids.tolist())
+        matched_abs_col_ids.extend(abs_col_ids.tolist())
+
+        rel_remaining_col_ids = np.setdiff1d(np.arange(crt_n_cols), col_ids)
+        abs_remaining_col_ids = abs_remaining_col_ids[rel_remaining_col_ids]
+        print("remaining columns: relative_id: {}; abs_id: {}".format(rel_remaining_col_ids,abs_remaining_col_ids))
+        if len(rel_remaining_col_ids) == 0:
+            break
+        cost_mat = cost_mat[:,rel_remaining_col_ids]
+        i+=1
+    
+    print(matched_abs_row_ids)
+    print(matched_abs_col_ids)
+    assert torch.all(
+        torch.as_tensor(sorted(matched_abs_col_ids)) == torch.as_tensor(range(n_act))
+    )
+    
+
+def multi_round_bipartite_matching(cost_mat,debug=False):
+    '''
+    perform multiple rounds matching for n_rows < n_cols
+    if n_rows >= n_cols, just one round and return
+    '''
+    def print_nothing(*args):
+        pass
+
+    if debug:
+        print_fn = print
+    else:
+        print_fn = print_nothing
+    if isinstance(cost_mat,torch.Tensor):
+        cost_mat = cost_mat.numpy()
+
+    cost_mat = cost_mat.copy()
+    n_vis,n_act = cost_mat.shape
+    
+    abs_remaining_col_ids = np.arange(cost_mat.shape[1])
+    matched_abs_row_ids = []
+    matched_abs_col_ids = []
+    i=1
+    while True:
+        print_fn("\n","##"*30,f"{i}-th round","##"*30)
+        crt_n_cols = cost_mat.shape[1]  # current n_cols
+        # print(cost_mat,f"cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+        print_fn(repr_2d_tensor_with_ids(torch.from_numpy(cost_mat))+f" cost matrix; relative col_ids range: 0 ~ {crt_n_cols-1}")
+
+        
+        row_ids, col_ids = linear_sum_assignment(cost_mat)
+        abs_col_ids = abs_remaining_col_ids[col_ids]
+        print_fn("matched columns: relative_id: {}; abs_id: {}".format(col_ids,abs_col_ids))
+        matched_abs_row_ids.extend(row_ids.tolist())
+        matched_abs_col_ids.extend(abs_col_ids.tolist())
+
+        rel_remaining_col_ids = np.setdiff1d(np.arange(crt_n_cols), col_ids)
+        abs_remaining_col_ids = abs_remaining_col_ids[rel_remaining_col_ids]
+        print_fn("remaining columns: relative_id: {}; abs_id: {}".format(rel_remaining_col_ids,abs_remaining_col_ids))
+        if len(rel_remaining_col_ids) == 0:
+            break
+        cost_mat = cost_mat[:,rel_remaining_col_ids]
+        i+=1
+    
+    print_fn("matched_abs_row_ids",matched_abs_row_ids)
+    print_fn("matched_abs_col_ids",matched_abs_col_ids)
+    assert torch.all(
+        torch.as_tensor(sorted(matched_abs_col_ids)) == torch.as_tensor(range(n_act))
+    )
+    return matched_abs_row_ids,matched_abs_col_ids
+
+
+
+
+if __name__ == "__main__":
+    torch.set_printoptions(linewidth=200)
+    cost = torch.randn(size=(5,18))
+    matched_abs_row_ids,matched_abs_col_ids = multi_round_bipartite_matching(cost,debug=True)
