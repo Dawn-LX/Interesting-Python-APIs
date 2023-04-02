@@ -26,7 +26,7 @@ def print_directory_structure(path, print_files=False,linewidth=160,statistic_fu
         info = structure_info + '-'*dash_len + statistic_info
         print(info)
         if print_files:
-            sub_indent = ' ' * 4 * (level + 1)
+            sub_indent = '|   ' * (level + 1)
             for file in files:
                 print(f"{sub_indent}{file}")
 
