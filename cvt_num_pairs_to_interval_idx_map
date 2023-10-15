@@ -1,0 +1,18 @@
+def cvt_num_pairs_to_interval_idx_map(num_pairs):
+    '''
+    e.g., 
+    input: num_pairs = [3,5,6,1,8,2,2]
+    return: interval_idx_map = [(0, 3), (3, 8), (8, 14), (14, 15), (15, 23), (23, 25), (25, 27)]
+    '''
+    cumsum = torch.cumsum(torch.as_tensor(num_pairs),dim=0).tolist()
+    ids1 = [0]+cumsum[:-1]
+    ids2 = cumsum
+    interval_idx_map = list(zip(ids1,ids2))
+
+    assert len(interval_idx_map) == len(num_pairs)
+    assert sum(num_pairs) == interval_idx_map[-1][1]
+    for idx,n_pair in enumerate(num_pairs):
+        sid,eid = interval_idx_map[idx]
+        assert eid - sid == n_pair
+
+    return interval_idx_map
